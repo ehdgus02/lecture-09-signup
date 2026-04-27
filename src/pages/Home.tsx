@@ -1,8 +1,7 @@
 import styled from "styled-components";
-import { useState, type SubmitEvent } from "react";
 import { useNavigate } from "react-router";
 import { Title, Wrap } from "../components/Components.tsx";
-
+import { useForm } from "react-hook-form";
 
 
 const Card = styled.form`
@@ -16,7 +15,6 @@ const Card = styled.form`
     flex-direction: column;
     gap: 15px;
 `;
-
 
 
 const Input = styled.input`
@@ -53,106 +51,111 @@ const InputGroup = styled.div`
     flex-direction: column;
 `;
 
-type ErrorType = {
-    // 프로퍼티가 몇 개가 될진 모르겠지만, 그 프로퍼티의 key는 string이고 그 프로퍼티의 값들 모두 다 string이다
-    [key: string]: string;
-};
+type FormValues = {
+    username: string;
+    password: string;
+    name: string;
+    email: string;
+}
+
 
 function Home() {
+    // 1. 화면에 사용자가 입력해야 할 로그인 폼을 작성
+    // --- styled-components의 힘을 빌어서 화면 디자인
+
+    // 2. 그에 대해 사용자가 입력 처리를 끝내면
+    // --- 각 input에 대한 useState를 작성
+    // --- input과 useState를 연결 (4개 input에 onChange 작성)
+    // --- 사용자가 엔터를 칠 때 또는 회원가입 버튼을 눌렀을 때 onSubmit 작성
+
+    // 3. 유효성 검사를 한 후 사용자를 이동 시킨다.
+    // --- if 처리를 통해 내가 생각한, 전송에서 탈락해야 할 조건을 작성
+
+    // 4. 단, 유효성 검사에 실패하면 에러 메세지를 화면에 출력 시키고 끝낸다.
+    // --- useState를 또다시 만들 필요가 있음
+    // --- 여러개의 에러글 관리할 useState를 만들어도 되고, 하나의 useState를 사용할 수도 있음
+    // --- 하나의 useState를 쓴다면, function 안에서 여러 번의 setState가 동작되므로
+    // --- function 내에서 한 번만 setState 처리를 하기 위해, 새로운 object를 작성하였음
+
     const navigate = useNavigate();
 
-    const [username, setUsername] = useState("");
-    const [password, setPassword] = useState("");
-    const [email, setEmail] = useState("");
-    const [name, setName] = useState("");
+    const {
+        register,      // 화면에 존재하는 input과 react-hook-form 연결하는 기능
+        handleSubmit,   // react-hook-form에서 기재한 유효성 검사를 포함하여 submit 처리할 때 사용하는 기능
+        formState: { errors },     // errors : 유효성 검사 결과 값이 저장되는 곳
+    } = useForm<FormValues>();
 
-    const [error, setError] = useState<ErrorType>({});
 
-    const onSubmit = (event: SubmitEvent<HTMLFormElement>) => {
-        // 1. 기준 form 태그의 onSubmit 기능 무력화
-        event.preventDefault();
-
-        // 2. 유효성 검사
-        const result = validate(); // 유효성 검사에 성공하면 true, 실패하면 false
-        if (!result) return;
-
-        // 모든 검증을 통과하면, 그 입력한 값들을 백엔드에게 전송
+    // 예전에 onSubmit 속성에 집어넣었을 때에는 (event) => {} 의 함수였어야 되는데,
+    // react-hook-form을 사용하면서 handleSubmit() 안에 매개변수로 넣어야 되는 함수가 되었기 때문에
+    // 그 모양은 (data: 리액트훅폼에 맡겼던 그 타입) => {} 모양이 되어야 함
+    // 즉, 매개변수인 data에는 react-hook-form이 갖고 있는 값들이 객체로 들어옴
+    const onSubmit = (data: FormValues) => {
         // 3. 백엔드에게 전송
-        const data = { username, password, email, name };
         const queryString = new URLSearchParams(data).toString(); // 객체를 쿼리스트링을 만들어서 string으로 형변환
         navigate(`/result?${queryString}`);
     };
 
-    const validate = () => {
-        const newErrors: ErrorType = {};
-
-        // 전송하기 전, 유효성 검사를 먼저 진행하고서 사용자를 이동
-        // 1. username이 올바른가?
-        if (!username.trim()) newErrors.username = "아이디는 필수 입력 항목입니다.";
-        // 2. 비밀번호는 입력이 되었는가?
-        if (!password.trim()) newErrors.password = "비밀번호는 필수 입력 항목입니다.";
-        else if (password.length < 6) newErrors.password = "비밀번호는 최소 6자 이상이어야 합니다.";
-        // 3. 이름이 입력이 되었는가?
-        if (!name.trim()) newErrors.name = "이름은 필수 입력 항목입니다.";
-        // 4. 이메일이 입력이 되었는가?
-        if (!email.trim()) newErrors.email = "이메일은 필수 입력 항목입니다.";
-        else if (!/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(email))
-            newErrors.email = "이메일 형식이 올바르지 않습니다.";
-        // 이메일은 꼭 중간에 @ 가 들어갔는지 . 이 있는지 확인해줘야 함
-        // 어쩌구@어쩌구.어쩌구      => 뭔가 규칙성을 갖고 있는 string에 대한 검증을 할 때에는 "정규식"을 사용
-
-        setError(newErrors); // state를 쓸 때 객체면 조심하자! 타이밍 문제 발생할 수 있음
-
-        // 리턴은 true, false로 검증이 성공했는지 실패했는지만 변환
-        // error라고 하는 객체에 항목이 있으면 실패
-        // Object.keys(객체) => 매개변수로 넣은 객체의 프로퍼티 key들을 뽑아내는 메서드. 반환값은 array
-        // 집어넣은 객체가 { username: "실패" } 라면 Object.keys(객체)의 반환값은 ["username"]
-        return Object.keys(newErrors).length === 0;
-    };
+    {/*
+        react-hook-form 사용하는 기본 순서
+        1. react-hook-form 에게 맡길 타입 지정
+        2. useForm<타입>() 을 실행해서 내가 필요한 기능을 뽑아오고 (필수적인건 register, handleSubmit)
+        3. 각각 input에 가서 register을 실행해주기
+        4. form의 onSubmit 속성에 handleSubmit으로 감싼 전송 함수 넣기
+        5. 전송 함수 작성하기
+    */}
 
     return (
         <Wrap>
-            <Card onSubmit={onSubmit}>
+            <Card onSubmit={handleSubmit(onSubmit)}> {/* handleSubmit() => react-hook-form에 맡긴 validate를 진행 */}
                 <Title>회원가입</Title>
                 <InputGroup>
                     <Input
                         placeholder={"아이디"}
-                        onChange={event => {
-                            setUsername(event.target.value);
-                        }}
+                        {...register("username", {
+                            required: "아이디는 필수 입력 값 입니다.",
+                        })}
                     />
                     {/* 아이디에 대해 검사하고 실패한 내용을 출력해줘야 함 */}
-                    {error.username && <ErrorText>{error.username}</ErrorText>}
+                    {errors.username && <ErrorText>{errors.username.message}</ErrorText>}
                 </InputGroup>
                 <InputGroup>
                     <Input
                         placeholder={"비밀번호"}
                         type={"password"}
-                        onChange={event => {
-                            setPassword(event.target.value);
-                        }}
+                        {...register("password", {
+                            required: "비밀번호는 필수 입력 값 입니다.",
+                            minLength: {
+                                value: 6,
+                                message: "비밀번호는 최소 6자 이상이어야 합니다.",
+                            },
+                        })}
                     />
                     {/* 비밀번호에 대해 검사하고 실패한 내용을 출력해줘야 함 */}
-                    {error.password && <ErrorText>{error.password}</ErrorText>}
+                    {errors.password && <ErrorText>{errors.password.message}</ErrorText>}
                 </InputGroup>
                 <InputGroup>
                     <Input
                         placeholder={"이름"}
-                        onChange={event => {
-                            setName(event.target.value);
-                        }}
+                        {...register("name", {
+                            required: "이름은 필수 입력 값입니다.",
+                        })}
                     />
-                    {error.name && <ErrorText>{error.name}</ErrorText>}
+                    {errors.name && <ErrorText>{errors.name.message}</ErrorText>}
                 </InputGroup>
                 <InputGroup>
                     <Input
                         placeholder={"이메일"}
                         type={"email"}
-                        onChange={event => {
-                            setEmail(event.target.value);
-                        }}
+                        {...register("email", {
+                            required: "이메일은 필수 입력 값입니다.",
+                            pattern: {
+                                value: /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/,
+                                message: "올바른 이메일 형식이 아닙니다."
+                            },
+                        })}
                     />
-                    {error.email && <ErrorText>{error.email}</ErrorText>}
+                    {errors.email && <ErrorText>{errors.email.message}</ErrorText>}
                 </InputGroup>
                 <Button type={"submit"}>회원가입</Button>
             </Card>
